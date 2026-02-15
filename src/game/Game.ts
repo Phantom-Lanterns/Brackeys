@@ -5,8 +5,8 @@ import GameScene from './GameScene'
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: window.innerWidth,
+  height: window.innerHeight,
   backgroundColor: '#000000',
   scene: [BootScene, MenuScene, GameScene],
   physics: {
@@ -16,7 +16,8 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     }
   },
   scale: {
-    mode: Phaser.Scale.FIT,
+    parent: 'game-root',
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH
   }
 }

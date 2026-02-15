@@ -19,6 +19,7 @@
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
     "url-loader": "^4.1.1",
+    "vite": "^7.3.1",
     "webpack": "^5.105.2",
     "webpack-cli": "^6.0.1",
     "webpack-dev-server": "^5.2.3"
@@ -27,8 +28,13 @@
     "title": "Web Site"
   },
   "scripts": {
-    "build": "webpack --mode production",
-    "start": "webpack-dev-server",
+    "dev": "vite",
+    "build": "vite build",
+    "build:itch": "vite build",
+    "package:itch": "powershell -NoProfile -Command \"Compress-Archive -Path dist\\* -DestinationPath dist\\game-itch.zip -Force\"",
+    "preview": "vite preview",
+    "build:webpack": "webpack --mode production",
+    "start:webpack": "webpack-dev-server",
     "deploy": "yarn build && surge -p ./dist",
     "lint": "eslint src/**/*.js && stylelint src/**/*.css"
   },

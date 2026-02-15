@@ -3,3 +3,14 @@ canvas {
   height: 100% !important;
   object-fit: contain;
 }
+
+html, body, #game-root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#game-root {
+  width: 100%;
+  overflow: hidden;
+}
