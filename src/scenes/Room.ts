@@ -51,14 +51,18 @@ export default class RoomScene extends Phaser.Scene {
     })
     
     // Add a room interactable object (locks/marks the room visited when interacted)
-    const interactable = this.add.rectangle(this.roomWidth / 2, this.roomHeight / 2 - 100, 40, 40, 0xffcc00)
-    this.physics.add.existing(interactable, true)
-    ;(interactable as any).interactable = {
-      onInteract: (_player: Player) => {
-        // persist current door directions so locked rooms keep the same doors
-        this.roomManager.setRoomDoors(this.currentRoomId, Array.from(this.doors.keys()) as any)
-        this.roomManager.markVisited(this.currentRoomId);
-        (interactable as any).setFillStyle(0x888888)
+    // Only add if room hasn't been visited yet
+    const roomData = this.roomManager.getRoomData(this.currentRoomId)
+    if (!roomData?.visited) {
+      const interactable = this.add.rectangle(this.roomWidth / 2, this.roomHeight / 2 - 100, 40, 40, 0xffcc00)
+      this.physics.add.existing(interactable, true)
+      ;(interactable as any).interactable = {
+        onInteract: (_player: Player) => {
+          // persist current door directions so locked rooms keep the same doors
+          this.roomManager.setRoomDoors(this.currentRoomId, Array.from(this.doors.keys()) as any)
+          this.roomManager.markVisited(this.currentRoomId);
+          (interactable as any).setFillStyle(0x888888)
+        }
       }
     }
   }

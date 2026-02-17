@@ -17,8 +17,6 @@ export class RoomManager {
 
   private availableScenes = [
     'RoomScene',
-    'TestRoom1Scene',
-    'TestRoom2Scene',
   ]
 
   private availableColors = [0x2a2a2a, 0x3a2a2a, 0x2a2a3a, 0x3a3a2a, 0x2a3a3a]
@@ -95,11 +93,12 @@ export class RoomManager {
       return targetId
     }
 
-    // generate a new room replacing the current one (stay at same coords)
+    // generate a new room at the target coordinates and move there
     const scene = this.availableScenes[Math.floor(Math.random() * this.availableScenes.length)]
     const color = this.availableColors[Math.floor(Math.random() * this.availableColors.length)]
-    this.rooms.set(currentId, { x: this.currentRoomCoords.x, y: this.currentRoomCoords.y, scene, color, visited: false })
-    return currentId
+    this.rooms.set(targetId, { x: targetCoords.x, y: targetCoords.y, scene, color, visited: false })
+    this.currentRoomCoords = targetCoords
+    return targetId
   }
 
   getRoomData (roomId: string): RoomData | null {

@@ -48,36 +48,83 @@ export default class MiniMap {
       } else {
         this.graphics.fillStyle(0xffffff)
       }
+      this.graphics.strokeRect(
+        screenX - 15,
+        screenY - 15,
+        CONSTANTS.MINIMAP_CELL_SIZE,
+        CONSTANTS.MINIMAP_CELL_SIZE,
+      );
+      this.graphics.fillRect(
+        screenX - 15,
+        screenY - 15,
+        CONSTANTS.MINIMAP_CELL_SIZE,
+        CONSTANTS.MINIMAP_CELL_SIZE,
+      );
 
-      this.graphics.fillRect(screenX - 5, screenY - 5, 10, 10)
-    })
 
-    // Draw connections
-    visitedRooms.forEach((coords, roomId) => {
-      const screenX = miniMapX + CONSTANTS.MINIMAP_SIZE / 2 + coords.x * CONSTANTS.MINIMAP_CELL_SIZE
-      const screenY = miniMapY + CONSTANTS.MINIMAP_SIZE / 2 + coords.y * CONSTANTS.MINIMAP_CELL_SIZE
+      // Draw door indicators
+      const roomData = this.roomManager.getRoomData(roomId)
+      if (roomData?.doors) {
+        this.graphics.lineStyle(1, 0xff0000)
 
-      const directions = [
-        { dx: 0, dy: -1 },
-        { dx: 0, dy: 1 },
-        { dx: 1, dy: 0 },
-        { dx: -1, dy: 0 },
-      ]
-
-      for (const dir of directions) {
-        const adjacentId = `${coords.x + dir.dx},${coords.y + dir.dy}`
-        if (visitedRooms.has(adjacentId)) {
-          const adjCoords = visitedRooms.get(adjacentId)!
-          const adjScreenX = miniMapX + CONSTANTS.MINIMAP_SIZE / 2 + adjCoords.x * CONSTANTS.MINIMAP_CELL_SIZE
-          const adjScreenY = miniMapY + CONSTANTS.MINIMAP_SIZE / 2 + adjCoords.y * CONSTANTS.MINIMAP_CELL_SIZE
-
-          this.graphics.beginPath()
-          this.graphics.moveTo(screenX, screenY)
-          this.graphics.lineTo(adjScreenX, adjScreenY)
-          this.graphics.strokePath()
+        if (roomData.doors.includes('north')) {
+          this.graphics.strokeRect(
+            screenX - CONSTANTS.DOOR_INDICATOR_SIZE,
+            screenY -
+              (CONSTANTS.MINIMAP_CELL_SIZE / 2) ,
+            CONSTANTS.DOOR_INDICATOR_SIZE * 2,
+            CONSTANTS.DOOR_INDICATOR_SIZE,
+          );
+        }
+        if (roomData.doors.includes('south')) {
+          this.graphics.strokeRect(
+            screenX - CONSTANTS.DOOR_INDICATOR_SIZE,
+            screenY + CONSTANTS.MINIMAP_CELL_SIZE / 2 - (CONSTANTS.DOOR_INDICATOR_SIZE),
+            CONSTANTS.DOOR_INDICATOR_SIZE * 2,
+            CONSTANTS.DOOR_INDICATOR_SIZE,
+          );
+        }
+        if (roomData.doors.includes('east')) {
+          this.graphics.strokeRect(screenX + (CONSTANTS.MINIMAP_CELL_SIZE / 2) - (CONSTANTS.DOOR_INDICATOR_SIZE), screenY - CONSTANTS.DOOR_INDICATOR_SIZE, CONSTANTS.DOOR_INDICATOR_SIZE, CONSTANTS.DOOR_INDICATOR_SIZE * 2)
+        }
+        if (roomData.doors.includes('west')) {
+          this.graphics.strokeRect(
+            screenX -
+              CONSTANTS.MINIMAP_CELL_SIZE / 2 ,
+            screenY - CONSTANTS.DOOR_INDICATOR_SIZE,
+            CONSTANTS.DOOR_INDICATOR_SIZE,
+            CONSTANTS.DOOR_INDICATOR_SIZE * 2,
+          );
         }
       }
     })
+
+    // Draw connections
+    // visitedRooms.forEach((coords, roomId) => {
+    //   const screenX = miniMapX + CONSTANTS.MINIMAP_SIZE / 2 + coords.x * CONSTANTS.MINIMAP_CELL_SIZE
+    //   const screenY = miniMapY + CONSTANTS.MINIMAP_SIZE / 2 + coords.y * CONSTANTS.MINIMAP_CELL_SIZE
+
+    //   const directions = [
+    //     { dx: 0, dy: -1 },
+    //     { dx: 0, dy: 1 },
+    //     { dx: 1, dy: 0 },
+    //     { dx: -1, dy: 0 },
+    //   ]
+
+    //   for (const dir of directions) {
+    //     const adjacentId = `${coords.x + dir.dx},${coords.y + dir.dy}`
+    //     if (visitedRooms.has(adjacentId)) {
+    //       const adjCoords = visitedRooms.get(adjacentId)!
+    //       const adjScreenX = miniMapX + CONSTANTS.MINIMAP_SIZE / 2 + adjCoords.x * CONSTANTS.MINIMAP_CELL_SIZE
+    //       const adjScreenY = miniMapY + CONSTANTS.MINIMAP_SIZE / 2 + adjCoords.y * CONSTANTS.MINIMAP_CELL_SIZE
+
+    //       this.graphics.beginPath()
+    //       this.graphics.moveTo(screenX, screenY)
+    //       this.graphics.lineTo(adjScreenX, adjScreenY)
+    //       this.graphics.strokePath()
+    //     }
+    //   }
+    // })
   }
 
   destroy() {
