@@ -22,7 +22,7 @@ export default class MenuScene extends Phaser.Scene {
     this.add.existing(settings)
     this.add.existing(credits)
 
-    start.on('pointerup', () => this.scene.start('GameScene'))
+    start.on('pointerup', () => this.scene.start('RoomBootScene'))
     settings.on('pointerup', async () => {
       const mod = await import('./SettingsScene')
       if (!this.scene.get('SettingsScene')) this.scene.add('SettingsScene', mod.default, false)

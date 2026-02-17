@@ -2,13 +2,17 @@ import Phaser from 'phaser'
 import BootScene from '../scenes/BootScene'
 import MenuScene from '../scenes/MenuScene'
 import GameScene from './GameScene'
+import RoomBootScene from '../scenes/RoomBootScene'
+import RoomScene from '../scenes/Room'
+import TestRoom1Scene from '../scenes/TestRoom1Scene'
+import TestRoom2Scene from '../scenes/TestRoom2Scene'
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: window.innerWidth,
   height: window.innerHeight,
   backgroundColor: '#000000',
-  scene: [BootScene, MenuScene, GameScene],
+  scene: [BootScene, MenuScene, GameScene, RoomBootScene, RoomScene, TestRoom1Scene, TestRoom2Scene],
   physics: {
     default: 'arcade',
     arcade: {
