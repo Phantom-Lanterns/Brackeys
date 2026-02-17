@@ -73,12 +73,9 @@ export default class PlayerInteractComponent {
       const objRect = new Phaser.Geom.Rectangle(body.x, body.y, body.width, body.height);
 
       if (Phaser.Geom.Intersects.RectangleToRectangle(rect, objRect)) {
-        console.log('Overlapping with interactable:', interactable);
         overlaps.push(interactable);
       }
     });
-
-    if (overlaps.length === 0) console.log('No interactables in range.');
 
     return overlaps;
   }
