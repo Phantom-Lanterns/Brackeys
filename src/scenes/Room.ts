@@ -22,6 +22,9 @@ export default class RoomScene extends Phaser.Scene {
   wallThickness: number = CONSTANTS.WALL_THICKNESS
   player!: Player
   miniMap!: MiniMap
+  restartHoldDuration: number = 0
+  restartThreshold: number = 1500 // milliseconds
+  restartGraphics!: Phaser.GameObjects.Graphics
 
   constructor () {
     super({ key: 'RoomScene' })
@@ -41,6 +44,9 @@ export default class RoomScene extends Phaser.Scene {
 
     this.graphics = this.add.graphics()
     this.miniMap = new MiniMap(this, this.roomManager, this.currentRoomId)
+    this.restartGraphics = this.add.graphics()
+    this.restartGraphics.setScrollFactor(0, 0) // Fixed to viewport
+    this.restartGraphics.setDepth(101) // Above minimap
     
     this.generateRoom()
     this.player = new Player(this, this.roomWidth / 2, this.roomHeight / 2)
@@ -51,6 +57,15 @@ export default class RoomScene extends Phaser.Scene {
     // Setup keyboard for interaction
     this.input.keyboard!.addKey('E').on('down', () => {
       this.player.interact()
+    })
+
+    // Setup keyboard for restart (hold R)
+    const rKey = this.input.keyboard!.addKey('R')
+    rKey.on('down', () => {
+      this.restartHoldDuration = 0
+    })
+    rKey.on('up', () => {
+      this.restartHoldDuration = 0
     })
     
     // Add a room interactable object (locks/marks the room visited when interacted)
@@ -64,6 +79,12 @@ export default class RoomScene extends Phaser.Scene {
           // persist current door directions so locked rooms keep the same doors
           this.roomManager.setRoomDoors(this.currentRoomId, Array.from(this.doors.keys()) as any)
           this.roomManager.markVisited(this.currentRoomId);
+          
+          // Check win condition
+          if (this.roomManager.hasWon()) {
+            this.scene.start('CreditsScene')
+            return
+          }
           (interactable as any).setFillStyle(0x888888)
         }
       }
@@ -139,8 +160,23 @@ export default class RoomScene extends Phaser.Scene {
     // Update minimap
     this.miniMap.update(this.currentRoomId)
 
+    // Handle restart hold
+    const rKey = this.input.keyboard!.keys[Phaser.Input.Keyboard.KeyCodes.R]
+    if (rKey && rKey.isDown) {
+      this.restartHoldDuration += delta
+      
+      // Check if restart threshold reached
+      if (this.restartHoldDuration >= this.restartThreshold) {
+        this.scene.start("RoomBootScene");
+        return
+      }
+    } else {
+      this.restartHoldDuration = 0
+    }
+
     // Render
     this.render()
+    this.renderRestartIndicator()
   }
 
   transitionRoom (direction: 'north' | 'south' | 'east' | 'west') {
@@ -169,5 +205,38 @@ export default class RoomScene extends Phaser.Scene {
       this.roomWidth - this.wallThickness,
       this.roomHeight - this.wallThickness
     )
+  }
+
+  renderRestartIndicator () {
+    this.restartGraphics.clear()
+
+    // Only show if R is being held
+    const rKey = this.input.keyboard!.keys[Phaser.Input.Keyboard.KeyCodes.R]
+
+    const circleX = 40
+    const circleY = 40
+    const circleRadius = 25
+    const progress = Math.min(this.restartHoldDuration / this.restartThreshold, 1)
+
+    // Draw circle background (unfilled part)
+    this.restartGraphics.fillStyle(0x333333, 0.7)
+    this.restartGraphics.fillCircle(circleX, circleY, circleRadius)
+
+    // Draw filled progress arc
+    this.restartGraphics.fillStyle(0xff0000, 0.8)
+    const startAngle = -Math.PI / 2
+    const endAngle = startAngle + (Math.PI * 2 * progress)
+    this.restartGraphics.beginPath()
+    this.restartGraphics.moveTo(circleX, circleY)
+    this.restartGraphics.arc(circleX, circleY, circleRadius, startAngle, endAngle)
+    this.restartGraphics.lineTo(circleX, circleY)
+    this.restartGraphics.fillPath()
+
+    // Draw R text in center
+    this.add.text(circleX, circleY, 'R', {
+      fontSize: '18px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setScrollFactor(0, 0).setDepth(102)
   }
 }

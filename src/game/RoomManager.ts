@@ -120,4 +120,19 @@ export class RoomManager {
     const r = this.rooms.get(roomId)
     if (r) r.doors = doors
   }
+
+  // Check if player has won (visited all 25 rooms in 5x5 grid)
+  hasWon (): boolean {
+    // 5x5 grid is from -2 to 2 in both dimensions
+    for (let x = -2; x <= 2; x++) {
+      for (let y = -2; y <= 2; y++) {
+        const roomId = `${x},${y}`
+        const room = this.rooms.get(roomId)
+        if (!room || !room.visited) {
+          return false
+        }
+      }
+    }
+    return true
+  }
 }

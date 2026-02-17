@@ -9,6 +9,9 @@ export default class RoomBootScene extends Phaser.Scene {
   }
 
   create () {
+    // Clear all states and map data by creating a fresh RoomManager
+    this.roomManager = new RoomManager()
+    
     // Start the room scene with the room manager
     this.scene.start('RoomScene', { roomManager: this.roomManager })
   }
