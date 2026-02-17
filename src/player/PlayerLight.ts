@@ -84,7 +84,10 @@ export default class PlayerLight {
 
     // update cone lights positions to follow player + pointer direction
     const ptr = pointer || this.scene.input.activePointer
-    const angle = Phaser.Math.Angle.Between(this.playerObj.x, this.playerObj.y, ptr.worldX, ptr.worldY)
+    const camera = this.scene.cameras.main
+    const worldX = ptr.x + camera.scrollX
+    const worldY = ptr.y + camera.scrollY
+    const angle = Phaser.Math.Angle.Between(this.playerObj.x, this.playerObj.y, worldX, worldY)
     if (this.cone) {
       this.cone.setPosition(this.playerObj.x, this.playerObj.y)
       this.cone.setRotation(angle)

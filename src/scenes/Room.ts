@@ -36,6 +36,9 @@ export default class RoomScene extends Phaser.Scene {
     // Set physics world bounds to the room size (no camera scrolling)
     this.physics.world.setBounds(0, 0, this.roomWidth, this.roomHeight)
 
+    // Center the camera on the room
+    this.cameras.main.centerOn(this.roomWidth / 2, this.roomHeight / 2)
+
     this.graphics = this.add.graphics()
     this.miniMap = new MiniMap(this, this.roomManager, this.currentRoomId)
     
