@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import BootScene from '../scenes/BootScene'
+import PreloadScene from '../scenes/PreloadScene'
 import MenuScene from '../scenes/MenuScene'
 import GameScene from './GameScene'
 import RoomBootScene from '../scenes/RoomBootScene'
@@ -10,7 +11,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
   width: window.innerWidth,
   height: window.innerHeight,
   backgroundColor: '#000000',
-  scene: [BootScene, MenuScene, GameScene, RoomBootScene, RoomScene],
+  scene: [BootScene, PreloadScene, MenuScene, GameScene, RoomBootScene, RoomScene],
   physics: {
     default: 'arcade',
     arcade: {

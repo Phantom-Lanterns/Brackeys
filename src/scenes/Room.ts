@@ -19,7 +19,11 @@ export default class RoomScene extends Phaser.Scene {
   roomHeight: number = CONSTANTS.ROOM_HEIGHT
   doorSize: number = CONSTANTS.DOOR_SIZE
   graphics!: Phaser.GameObjects.Graphics
+  tiles: Phaser.GameObjects.Image[] = []
+  furniture: Phaser.GameObjects.Image[] = []
   wallThickness: number = CONSTANTS.WALL_THICKNESS
+  floorKey?: string
+  wallKey?: string
   player!: Player
   miniMap!: MiniMap
   restartHoldDuration: number = 0
@@ -76,8 +80,8 @@ export default class RoomScene extends Phaser.Scene {
       this.physics.add.existing(interactable, true)
       ;(interactable as any).interactable = {
         onInteract: (_player: Player) => {
-          // persist current door directions so locked rooms keep the same doors
-          this.roomManager.setRoomDoors(this.currentRoomId, Array.from(this.doors.keys()) as any)
+          // persist current door directions and appearance so locked rooms keep the same doors and visuals
+          this.roomManager.setRoomDoors(this.currentRoomId, Array.from(this.doors.keys()) as any, this.floorKey, this.wallKey)
           this.roomManager.markVisited(this.currentRoomId);
           
           // Check win condition
@@ -94,11 +98,20 @@ export default class RoomScene extends Phaser.Scene {
   generateRoom () {
     // Clear existing doors
     this.doors.clear()
+    // Clear existing tiles
+    if (this.tiles && this.tiles.length > 0) {
+      this.tiles.forEach(t => t.destroy())
+      this.tiles = []
+    }
 
     const centerCoords = this.roomManager.getCurrentRoomCoords()
+    // calculate effective wall thickness used for visuals and door placement
+    const thickness = Math.max(1, Math.round(this.wallThickness * 2))
     // If this room already has persisted doors, use them
     const roomData = this.roomManager.getRoomData(this.currentRoomId)
     if (roomData && roomData.doors && roomData.doors.length > 0) {
+      // restore saved visuals if present
+      this.createTilesAndWalls(roomData.floorKey, roomData.wallKey)
       const allConfigs: DoorConfig[] = [
         { direction: 'north', x: this.roomWidth / 2, y: this.doorSize / 2 },
         { direction: 'south', x: this.roomWidth / 2, y: this.roomHeight - this.doorSize / 2 },
@@ -108,9 +121,36 @@ export default class RoomScene extends Phaser.Scene {
       for (const dir of roomData.doors) {
         const cfg = allConfigs.find(c => c.direction === dir)
         if (cfg) {
-          const door = new Door(this, cfg.x, cfg.y, this.doorSize, this.doorSize, () => this.transitionRoom(cfg.direction))
-          this.doors.set(cfg.direction, door)
-        }
+            // compute door size and pushed position so door sits into the wall
+            let dw = this.doorSize
+            let dh = this.doorSize
+            let dx = cfg.x
+            let dy = cfg.y
+
+            if (cfg.direction === 'north' || cfg.direction === 'south') {
+              // door spans across wall horizontally; make it taller so it isn't squashed
+              dw = this.doorSize
+              dh = Math.max(this.doorSize, Math.round(thickness * 1.8))
+              // place so the door's bottom (inner edge) aligns with the room inner boundary
+              if (cfg.direction === 'north') {
+                dy = -Math.round(dh / 2)
+              } else {
+                dy = Math.round(this.roomHeight + dh / 2)
+              }
+            } else {
+              // east/west doors: make them wider so they fit wall height
+              dw = Math.max(this.doorSize, Math.round(thickness * 1.8))
+              dh = this.doorSize
+              if (cfg.direction === 'west') {
+                dx = -Math.round(dw / 2)
+              } else {
+                dx = Math.round(this.roomWidth + dw / 2)
+              }
+            }
+
+            const door = new Door(this, dx, dy, dw, dh, () => this.transitionRoom(cfg.direction), cfg.direction, this.chooseDoorTexture())
+            this.doors.set(cfg.direction, door)
+          }
       }
       return
     }
@@ -148,9 +188,244 @@ export default class RoomScene extends Phaser.Scene {
 
     const selected = possible.slice(0, count)
     for (const cfg of selected) {
-      const door = new Door(this, cfg.x, cfg.y, this.doorSize, this.doorSize, () => this.transitionRoom(cfg.direction))
+      let dw = this.doorSize
+      let dh = this.doorSize
+      let dx = cfg.x
+      let dy = cfg.y
+
+      if (cfg.direction === 'north' || cfg.direction === 'south') {
+        dw = this.doorSize
+        dh = Math.max(this.doorSize, Math.round(thickness * 1.8))
+        if (cfg.direction === 'north') {
+          dy = -Math.round(dh / 2)
+        } else {
+          dy = Math.round(this.roomHeight + dh / 2)
+        }
+      } else {
+        dw = Math.max(this.doorSize, Math.round(thickness * 1.8))
+        dh = this.doorSize
+        if (cfg.direction === 'west') {
+          dx = -Math.round(dw / 2)
+        } else {
+          dx = Math.round(this.roomWidth + dw / 2)
+        }
+      }
+
+      const door = new Door(this, dx, dy, dw, dh, () => this.transitionRoom(cfg.direction), cfg.direction, this.chooseDoorTexture())
       this.doors.set(cfg.direction, door)
     }
+
+    // After doors are set, create tiled floor and walls for this room
+    this.createTilesAndWalls()
+  }
+
+  createTilesAndWalls (floorKeyParam?: string, wallKeyParam?: string) {
+    // Create a 4x4 grid of floor tiles stretched to fill the room
+    const cols = 4
+    const rows = 4
+    const tileW = this.roomWidth / cols
+    const tileH = this.roomHeight / rows
+
+    const floorKeys = ['tiles_floor_1', 'tiles_floor_2', 'tiles_floor_3']
+
+    // pick a single floor texture for this room so the whole floor repeats the same tile
+    let chosenKey: string
+    let chosenWallKey: string
+    if (typeof floorKeyParam !== 'undefined' || typeof wallKeyParam !== 'undefined') {
+      chosenKey = floorKeyParam ?? floorKeys[0]
+      chosenWallKey = wallKeyParam ?? 'tiles_wall_1'
+    } else {
+      const coords = this.roomManager.getCurrentRoomCoords()
+      const seed = Math.abs(coords.x * 31 + coords.y * 17)
+      chosenKey = floorKeys[seed % floorKeys.length]
+      const wallKeys = ['tiles_wall_1', 'tiles_wall_2']
+      const wallSeed = Math.abs(coords.x * 7 + coords.y * 11)
+      chosenWallKey = wallKeys[wallSeed % wallKeys.length]
+    }
+
+    // store chosen appearance for potential saving later
+    this.floorKey = chosenKey
+    this.wallKey = chosenWallKey
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const imgX = x * tileW + tileW / 2
+        const imgY = y * tileH + tileH / 2
+        const img = this.add.image(imgX, imgY, chosenKey)
+        img.setDisplaySize(tileW, tileH)
+        img.setDepth(0) // ensure floor is at the lowest level
+        this.tiles.push(img)
+      }
+    }
+
+    // Walls: chosenWallKey already selected above
+
+    // increase thickness a bit so walls are not so tight
+    const thickness = Math.max(1, Math.round(this.wallThickness * 2))
+
+    // Place walls outside the room bounds so they visually sit on the room edges
+    // Add extra padding so the vertical wall bars extend further up/down (expand 'black rectangle' height)
+    const extra = Math.max(0, Math.round(thickness * 8))
+    // Top/bottom should span beyond the room width; left/right should be taller than room height
+    const outerWidth = this.roomWidth + thickness * 2 + extra
+    const outerHeight = this.roomHeight + thickness * 2 + extra
+
+    // Use TileSprite so wall textures repeat instead of stretching
+    const top = this.add.tileSprite(this.roomWidth / 2, -thickness / 2 - Math.round(extra / 2), outerWidth, thickness, chosenWallKey)
+    top.setOrigin(0.5)
+    top.setDepth(1)
+
+    const bottom = this.add.tileSprite(this.roomWidth / 2, this.roomHeight + thickness / 2 + Math.round(extra / 2), outerWidth, thickness, chosenWallKey)
+    bottom.setOrigin(0.5)
+    bottom.setDepth(1)
+
+    // Left/right should be tall vertical bars (height > roomHeight) and their width should be the wall thickness
+    const left = this.add.tileSprite(-thickness / 2 - Math.round(extra / 2), this.roomHeight / 2, thickness, outerHeight, chosenWallKey)
+    left.setOrigin(0.5)
+    left.setDepth(1)
+
+    const right = this.add.tileSprite(this.roomWidth + thickness / 2 + Math.round(extra / 2), this.roomHeight / 2, thickness, outerHeight, chosenWallKey)
+    right.setOrigin(0.5)
+    right.setDepth(1)
+
+    // Try to compute texture source size so we can set tileScale to make
+    // the wall texture repeat and cover the full wall rectangle cleanly.
+    try {
+      const tex = (this.textures.get(chosenWallKey) as any)
+      const srcImg = typeof tex.getSourceImage === 'function' ? tex.getSourceImage() : (tex.source && tex.source[0] && (tex.source[0].image || tex.source[0]))
+      const srcW = (srcImg && srcImg.width) || 32
+      const srcH = (srcImg && srcImg.height) || 32
+
+      // Top/bottom: stretch horizontally across outerWidth, tile vertically to match wall thickness
+      const horizRepeats = Math.max(1, Math.ceil(outerWidth / srcW))
+      ;(top as any).tileScaleX = outerWidth / (horizRepeats * srcW)
+      ;(top as any).tileScaleY = Math.max(0.01, thickness / srcH)
+
+      ;(bottom as any).tileScaleX = outerWidth / (horizRepeats * srcW)
+      ;(bottom as any).tileScaleY = Math.max(0.01, thickness / srcH)
+
+      // Left/right: tile vertically to fill outerHeight and set horizontal scale to match thickness
+      const vertRepeats = Math.max(1, Math.ceil(outerHeight / srcH))
+      ;(left as any).tileScaleX = Math.max(0.01, thickness / srcW)
+      ;(left as any).tileScaleY = outerHeight / (vertRepeats * srcH)
+
+      ;(right as any).tileScaleX = Math.max(0.01, thickness / srcW)
+      ;(right as any).tileScaleY = outerHeight / (vertRepeats * srcH)
+    } catch (e) {
+      // Fallback: small tile scale to give more repeats
+      const wallTileScale = 0.25
+      ;(top as any).tileScaleY = wallTileScale
+      ;(bottom as any).tileScaleY = wallTileScale
+      ;(left as any).tileScaleX = wallTileScale
+      ;(right as any).tileScaleX = wallTileScale
+    }
+
+    this.tiles.push(top, bottom, left, right)
+
+    // After walls/floor are created, optionally populate furniture for special room types
+    const roomType = this.chooseRoomType()
+    if (roomType === 'kitchen') {
+      this.createKitchenFurniture(tileW, tileH, thickness)
+    }
+  }
+
+  chooseRoomType () {
+    // Deterministic room type selection based on coords so layouts persist visually per-room
+    const coords = this.roomManager.getCurrentRoomCoords()
+    const seed = Math.abs(coords.x * 5 + coords.y * 11)
+    // Make roughly 1 in 4 rooms a kitchen
+    if (seed % 4 === 0) return 'kitchen'
+    return 'default'
+  }
+
+  createKitchenFurniture (tileW: number, tileH: number, thickness: number) {
+    // Clear any previous furniture
+    if (this.furniture.length) {
+      this.furniture.forEach(f => f.destroy())
+      this.furniture = []
+    }
+
+    const cx = this.roomWidth / 2
+    const cy = this.roomHeight / 2
+
+    // Table in the centre-lower area (smaller so it doesn't dominate)
+    const table = this.add.image(cx, cy + tileH * 0.6, 'furniture_table')
+    table.setDisplaySize(tileW * 1.2, tileH * 0.8)
+    table.setDepth(1)
+    this.furniture.push(table)
+
+    // Chairs around the table (scaled down, positioned outside table edge)
+    const chairLeft = this.add.image(table.x - table.displayWidth / 2 - tileW * 0.25, table.y + 6, 'furniture_chair_looking_right')
+    chairLeft.setDisplaySize(tileW * 0.45, tileH * 0.45)
+    chairLeft.setDepth(1)
+    this.furniture.push(chairLeft)
+
+    const chairRight = this.add.image(table.x + table.displayWidth / 2 + tileW * 0.25, table.y + 6, 'furniture_chair_looking_left')
+    // Many chair assets include orientations; fall back to rotated right-facing if left-facing key missing
+    if (!this.textures.exists('furniture_chair_looking_left')) {
+      chairRight.setTexture('furniture_chair_looking_right')
+      chairRight.setAngle(180)
+    }
+    chairRight.setDisplaySize(tileW * 0.45, tileH * 0.45)
+    chairRight.setDepth(1)
+    this.furniture.push(chairRight)
+
+    const chairTop = this.add.image(table.x, table.y - table.displayHeight / 2 - tileH * 0.18, 'furniture_chair_looking_down')
+    chairTop.setDisplaySize(tileW * 0.45, tileH * 0.45)
+    chairTop.setDepth(1)
+    this.furniture.push(chairTop)
+
+    // Fridge at top-left near the wall (scaled down)
+    const fridge = this.add.image(thickness + 24, thickness + 24, 'furniture_fridge')
+    fridge.setOrigin(0, 0)
+    fridge.setDisplaySize(tileW * 0.8, tileH * 1.4)
+    fridge.setDepth(1)
+    this.furniture.push(fridge)
+
+    // Sink near top wall (smaller)
+    const sink = this.add.image(this.roomWidth - thickness - tileW * 0.9, thickness + 18, 'furniture_sink')
+    sink.setOrigin(0, 0)
+    sink.setDisplaySize(tileW * 0.9, tileH * 0.5)
+    sink.setDepth(1)
+    this.furniture.push(sink)
+
+    // Kitchen equipment / stove on right-side counter (nudge inward)
+    const stove = this.add.image(this.roomWidth - thickness - tileW * 0.9, this.roomHeight / 2 - tileH * 0.2, 'furniture_kitchen_equipment')
+    stove.setDisplaySize(tileW * 0.9, tileH * 0.85)
+    stove.setDepth(1)
+    this.furniture.push(stove)
+
+    // Small plates / items on the table (on top layer)
+    const plateKeys = ['item_plate_1', 'item_plate_2', 'item_plate_3']
+    for (let i = 0; i < 2; i++) {
+      const k = plateKeys[i % plateKeys.length]
+      if (!this.textures.exists(k)) continue
+      const offX = (i === 0) ? -12 : 12
+      const plate = this.add.image(table.x + offX, table.y - table.displayHeight * 0.15, k)
+      plate.setDisplaySize(tileW * 0.28, tileH * 0.28)
+      plate.setDepth(3)
+      this.furniture.push(plate)
+    }
+
+    // Wall item: clock on north wall
+    if (this.textures.exists('item_wall_clock')) {
+      const clock = this.add.image(this.roomWidth / 2, thickness + 12, 'item_wall_clock')
+      clock.setDisplaySize(48, 48)
+      clock.setDepth(3)
+      this.furniture.push(clock)
+    }
+  }
+
+  chooseDoorTexture () {
+    const doorKeys = [
+      'door_baige_door_closed',
+      'door_brown_door_closed',
+      'door_dark_baige_brown_door_closed',
+      'door_dark_brown_door_closed'
+    ]
+    const coords = this.roomManager.getCurrentRoomCoords()
+    const seed = Math.abs(coords.x * 13 + coords.y * 7)
+    return doorKeys[seed % doorKeys.length]
   }
 
   update (time: number, delta: number) {

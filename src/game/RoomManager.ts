@@ -8,6 +8,8 @@ export interface RoomData extends RoomCoords {
   color?: number
   visited?: boolean
   doors?: ('north' | 'south' | 'east' | 'west')[]
+  floorKey?: string
+  wallKey?: string
 }
 
 export class RoomManager {
@@ -116,9 +118,15 @@ export class RoomManager {
   }
 
   // Persist door directions for a room so locked rooms keep their doors
-  setRoomDoors (roomId: string, doors: ('north' | 'south' | 'east' | 'west')[]) {
+  // Also optionally persist floor/wall appearance at the same time so the appearance
+  // only gets saved when the doors are saved (i.e., when a room is locked/saved).
+  setRoomDoors (roomId: string, doors: ('north' | 'south' | 'east' | 'west')[], floorKey?: string, wallKey?: string) {
     const r = this.rooms.get(roomId)
-    if (r) r.doors = doors
+    if (r) {
+      r.doors = doors
+      if (floorKey) r.floorKey = floorKey
+      if (wallKey) r.wallKey = wallKey
+    }
   }
 
   // Check if player has won (visited all 25 rooms in 5x5 grid)

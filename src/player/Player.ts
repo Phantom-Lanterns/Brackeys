@@ -18,6 +18,9 @@ export default class Player {
 
     try { this.sprite.setPipeline('Light2D'); } catch (e) {}
 
+    // Draw player above most furniture so it overlaps correctly
+    this.sprite.setDepth(2);
+
     scene.physics.add.existing(this.sprite);
     this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
     this.body.setCollideWorldBounds(true);
