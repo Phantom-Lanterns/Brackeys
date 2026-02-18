@@ -19,7 +19,7 @@ export default class RoomScene extends Phaser.Scene {
   roomHeight: number = CONSTANTS.ROOM_HEIGHT
   doorSize: number = CONSTANTS.DOOR_SIZE
   graphics!: Phaser.GameObjects.Graphics
-  tiles: Phaser.GameObjects.Image[] = []
+  tiles: (Phaser.GameObjects.Image | Phaser.GameObjects.TileSprite)[] = []
   furniture: Phaser.GameObjects.Image[] = []
   wallThickness: number = CONSTANTS.WALL_THICKNESS
   floorKey?: string
