@@ -20,14 +20,14 @@ export default class PreloadScene extends Phaser.Scene {
       x: width / 2,
       y: height / 2 - 50,
       text: 'Loading...',
-      style: { font: '20px monospace', fill: '#ffffff' }
+      style: { font: '20px monospace', color: '#ffffff' }
     }).setOrigin(0.5)
 
     const percentText = this.make.text({
       x: width / 2,
       y: height / 2,
       text: '0%',
-      style: { font: '18px monospace', fill: '#ffffff' }
+      style: { font: '18px monospace', color: '#ffffff' }
     }).setOrigin(0.5)
 
     this.load.on('progress', (value: number) => {
@@ -51,6 +51,12 @@ export default class PreloadScene extends Phaser.Scene {
 
     // optional small logo used on menu
     this.load.image('logo', 'assets/logo.png')
+
+    // player spritesheet (16x16 frames, 16 frames total: 4 down, 4 up, 4 right, 4 left)
+    this.load.spritesheet('player_walk', 'assets/character1.png', { frameWidth: 16, frameHeight: 32 })
+
+    // lever spritesheet (64x64 frames, 5 frames: left=closed, right=open)
+    this.load.spritesheet('lever', 'assets/lever.png', { frameWidth: 64, frameHeight: 64 })
 
     // enqueue all known assets
     loadAllAssets(this)

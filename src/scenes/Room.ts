@@ -72,14 +72,30 @@ export default class RoomScene extends Phaser.Scene {
       this.restartHoldDuration = 0
     })
     
-    // Add a room interactable object (locks/marks the room visited when interacted)
-    // Only add if room hasn't been visited yet
+    // Add a room interactable object (lever - locks/marks the room visited when interacted)
+    // Always create the lever; show triggered state if room is visited
     const roomData = this.roomManager.getRoomData(this.currentRoomId)
+    const lever = this.add.sprite(this.roomWidth / 2, this.roomHeight / 2 - 100, 'lever', 0)
+    lever.setOrigin(0.5)
+    lever.setScale(2)
+    lever.setDepth(1)
+    this.physics.add.existing(lever, true)
+    ;(lever as any).currentLeverFrame = roomData?.visited ? 4 : 0
+    
+    // Set frame based on room state
+    if (roomData?.visited) {
+      lever.setFrame(4)
+    }
+    
+    // Only make it interactable if room hasn't been visited
     if (!roomData?.visited) {
-      const interactable = this.add.rectangle(this.roomWidth / 2, this.roomHeight / 2 - 100, 40, 40, 0xffcc00)
-      this.physics.add.existing(interactable, true)
-      ;(interactable as any).interactable = {
+      ;(lever as any).interactable = {
         onInteract: (_player: Player) => {
+          // Set lever to fully open (frame 4) on first interact
+          lever.setFrame(4)
+          ;(lever as any).currentLeverFrame = 4
+          
+          // Mark room as visited
           // persist current door directions and appearance so locked rooms keep the same doors and visuals
           this.roomManager.setRoomDoors(this.currentRoomId, Array.from(this.doors.keys()) as any, this.floorKey, this.wallKey)
           this.roomManager.markVisited(this.currentRoomId);
@@ -89,7 +105,6 @@ export default class RoomScene extends Phaser.Scene {
             this.scene.start('CreditsScene')
             return
           }
-          (interactable as any).setFillStyle(0x888888)
         }
       }
     }
@@ -324,9 +339,9 @@ export default class RoomScene extends Phaser.Scene {
 
     // After walls/floor are created, optionally populate furniture for special room types
     const roomType = this.chooseRoomType()
-    if (roomType === 'kitchen') {
-      this.createKitchenFurniture(tileW, tileH, thickness)
-    }
+    // if (roomType === 'kitchen') {
+    //   this.createKitchenFurniture(tileW, tileH, thickness)
+    // }
   }
 
   chooseRoomType () {
@@ -338,83 +353,83 @@ export default class RoomScene extends Phaser.Scene {
     return 'default'
   }
 
-  createKitchenFurniture (tileW: number, tileH: number, thickness: number) {
-    // Clear any previous furniture
-    if (this.furniture.length) {
-      this.furniture.forEach(f => f.destroy())
-      this.furniture = []
-    }
+  // createKitchenFurniture (tileW: number, tileH: number, thickness: number) {
+  //   // Clear any previous furniture
+  //   if (this.furniture.length) {
+  //     this.furniture.forEach(f => f.destroy())
+  //     this.furniture = []
+  //   }
 
-    const cx = this.roomWidth / 2
-    const cy = this.roomHeight / 2
+  //   const cx = this.roomWidth / 2
+  //   const cy = this.roomHeight / 2
 
-    // Table in the centre-lower area (smaller so it doesn't dominate)
-    const table = this.add.image(cx, cy + tileH * 0.6, 'furniture_table')
-    table.setDisplaySize(tileW * 1.2, tileH * 0.8)
-    table.setDepth(1)
-    this.furniture.push(table)
+  //   // Table in the centre-lower area (smaller so it doesn't dominate)
+  //   const table = this.add.image(cx, cy + tileH * 0.6, 'furniture_table')
+  //   table.setDisplaySize(tileW * 1.2, tileH * 0.8)
+  //   table.setDepth(1)
+  //   this.furniture.push(table)
 
-    // Chairs around the table (scaled down, positioned outside table edge)
-    const chairLeft = this.add.image(table.x - table.displayWidth / 2 - tileW * 0.25, table.y + 6, 'furniture_chair_looking_right')
-    chairLeft.setDisplaySize(tileW * 0.45, tileH * 0.45)
-    chairLeft.setDepth(1)
-    this.furniture.push(chairLeft)
+  //   // Chairs around the table (scaled down, positioned outside table edge)
+  //   const chairLeft = this.add.image(table.x - table.displayWidth / 2 - tileW * 0.25, table.y + 6, 'furniture_chair_looking_right')
+  //   chairLeft.setDisplaySize(tileW * 0.45, tileH * 0.45)
+  //   chairLeft.setDepth(1)
+  //   this.furniture.push(chairLeft)
 
-    const chairRight = this.add.image(table.x + table.displayWidth / 2 + tileW * 0.25, table.y + 6, 'furniture_chair_looking_left')
-    // Many chair assets include orientations; fall back to rotated right-facing if left-facing key missing
-    if (!this.textures.exists('furniture_chair_looking_left')) {
-      chairRight.setTexture('furniture_chair_looking_right')
-      chairRight.setAngle(180)
-    }
-    chairRight.setDisplaySize(tileW * 0.45, tileH * 0.45)
-    chairRight.setDepth(1)
-    this.furniture.push(chairRight)
+  //   const chairRight = this.add.image(table.x + table.displayWidth / 2 + tileW * 0.25, table.y + 6, 'furniture_chair_looking_left')
+  //   // Many chair assets include orientations; fall back to rotated right-facing if left-facing key missing
+  //   if (!this.textures.exists('furniture_chair_looking_left')) {
+  //     chairRight.setTexture('furniture_chair_looking_right')
+  //     chairRight.setAngle(180)
+  //   }
+  //   chairRight.setDisplaySize(tileW * 0.45, tileH * 0.45)
+  //   chairRight.setDepth(1)
+  //   this.furniture.push(chairRight)
 
-    const chairTop = this.add.image(table.x, table.y - table.displayHeight / 2 - tileH * 0.18, 'furniture_chair_looking_down')
-    chairTop.setDisplaySize(tileW * 0.45, tileH * 0.45)
-    chairTop.setDepth(1)
-    this.furniture.push(chairTop)
+  //   const chairTop = this.add.image(table.x, table.y - table.displayHeight / 2 - tileH * 0.18, 'furniture_chair_looking_down')
+  //   chairTop.setDisplaySize(tileW * 0.45, tileH * 0.45)
+  //   chairTop.setDepth(1)
+  //   this.furniture.push(chairTop)
 
-    // Fridge at top-left near the wall (scaled down)
-    const fridge = this.add.image(thickness + 24, thickness + 24, 'furniture_fridge')
-    fridge.setOrigin(0, 0)
-    fridge.setDisplaySize(tileW * 0.8, tileH * 1.4)
-    fridge.setDepth(1)
-    this.furniture.push(fridge)
+  //   // Fridge at top-left near the wall (scaled down)
+  //   const fridge = this.add.image(thickness + 24, thickness + 24, 'furniture_fridge')
+  //   fridge.setOrigin(0, 0)
+  //   fridge.setDisplaySize(tileW * 0.8, tileH * 1.4)
+  //   fridge.setDepth(1)
+  //   this.furniture.push(fridge)
 
-    // Sink near top wall (smaller)
-    const sink = this.add.image(this.roomWidth - thickness - tileW * 0.9, thickness + 18, 'furniture_sink')
-    sink.setOrigin(0, 0)
-    sink.setDisplaySize(tileW * 0.9, tileH * 0.5)
-    sink.setDepth(1)
-    this.furniture.push(sink)
+  //   // Sink near top wall (smaller)
+  //   const sink = this.add.image(this.roomWidth - thickness - tileW * 0.9, thickness + 18, 'furniture_sink')
+  //   sink.setOrigin(0, 0)
+  //   sink.setDisplaySize(tileW * 0.9, tileH * 0.5)
+  //   sink.setDepth(1)
+  //   this.furniture.push(sink)
 
-    // Kitchen equipment / stove on right-side counter (nudge inward)
-    const stove = this.add.image(this.roomWidth - thickness - tileW * 0.9, this.roomHeight / 2 - tileH * 0.2, 'furniture_kitchen_equipment')
-    stove.setDisplaySize(tileW * 0.9, tileH * 0.85)
-    stove.setDepth(1)
-    this.furniture.push(stove)
+  //   // Kitchen equipment / stove on right-side counter (nudge inward)
+  //   const stove = this.add.image(this.roomWidth - thickness - tileW * 0.9, this.roomHeight / 2 - tileH * 0.2, 'furniture_kitchen_equipment')
+  //   stove.setDisplaySize(tileW * 0.9, tileH * 0.85)
+  //   stove.setDepth(1)
+  //   this.furniture.push(stove)
 
-    // Small plates / items on the table (on top layer)
-    const plateKeys = ['item_plate_1', 'item_plate_2', 'item_plate_3']
-    for (let i = 0; i < 2; i++) {
-      const k = plateKeys[i % plateKeys.length]
-      if (!this.textures.exists(k)) continue
-      const offX = (i === 0) ? -12 : 12
-      const plate = this.add.image(table.x + offX, table.y - table.displayHeight * 0.15, k)
-      plate.setDisplaySize(tileW * 0.28, tileH * 0.28)
-      plate.setDepth(3)
-      this.furniture.push(plate)
-    }
+  //   // Small plates / items on the table (on top layer)
+  //   const plateKeys = ['item_plate_1', 'item_plate_2', 'item_plate_3']
+  //   for (let i = 0; i < 2; i++) {
+  //     const k = plateKeys[i % plateKeys.length]
+  //     if (!this.textures.exists(k)) continue
+  //     const offX = (i === 0) ? -12 : 12
+  //     const plate = this.add.image(table.x + offX, table.y - table.displayHeight * 0.15, k)
+  //     plate.setDisplaySize(tileW * 0.28, tileH * 0.28)
+  //     plate.setDepth(3)
+  //     this.furniture.push(plate)
+  //   }
 
-    // Wall item: clock on north wall
-    if (this.textures.exists('item_wall_clock')) {
-      const clock = this.add.image(this.roomWidth / 2, thickness + 12, 'item_wall_clock')
-      clock.setDisplaySize(48, 48)
-      clock.setDepth(3)
-      this.furniture.push(clock)
-    }
-  }
+  //   // Wall item: clock on north wall
+  //   if (this.textures.exists('item_wall_clock')) {
+  //     const clock = this.add.image(this.roomWidth / 2, thickness + 12, 'item_wall_clock')
+  //     clock.setDisplaySize(48, 48)
+  //     clock.setDepth(3)
+  //     this.furniture.push(clock)
+  //   }
+  // }
 
   chooseDoorTexture () {
     const doorKeys = [

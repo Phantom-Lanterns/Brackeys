@@ -70,7 +70,6 @@ export default class Door implements IInteractable {
     // mark as interactable
     ;(this.sprite as any).interactable = this
 
-    try { this.sprite.setPipeline('Light2D') } catch (e) {}
   }
 
   onInteract(player: Player) {

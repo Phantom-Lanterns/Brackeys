@@ -9,7 +9,7 @@ export default class MenuScene extends Phaser.Scene {
   create () {
     const { width, height } = this.scale
 
-    this.add.text(width / 2, height / 2 - 120, 'My Phaser Game', {
+    this.add.text(width / 2, height / 2 - 120, 'Roombound', {
       fontSize: '32px',
       color: '#ffffff'
     }).setOrigin(0.5)
@@ -19,7 +19,7 @@ export default class MenuScene extends Phaser.Scene {
     const credits = new UIButton(this, width / 2, height / 2 + 100, 'Credits')
 
     this.add.existing(start)
-    this.add.existing(settings)
+    // this.add.existing(settings)
     this.add.existing(credits)
 
     start.on('pointerup', () => this.scene.start('RoomBootScene'))

@@ -17,7 +17,7 @@ export default class PlayerInteractComponent {
     this.offset = offset;
 
     // visible square
-    this.square = scene.add.rectangle(player.sprite.x, player.sprite.y, size, size, 0x00ff00, 0.3)
+    this.square = scene.add.rectangle(player.sprite.x, player.sprite.y, size, size, 0x00ff00, 0.0)
       .setOrigin(0.5)
       .setDepth(100);
 
@@ -36,8 +36,25 @@ export default class PlayerInteractComponent {
     const x = this.player.sprite.x;
     const y = this.player.sprite.y;
 
-    // position square in front of player
-    const angle = this.player.sprite.rotation;
+    // position square in front of player, rotated with the player's current velocity direction
+    const vx = this.player.body.velocity.x;
+    const vy = this.player.body.velocity.y;
+    
+    // Calculate angle from velocity; default to last direction if not moving
+    let angle = 0;
+    if (vx !== 0 || vy !== 0) {
+      angle = Math.atan2(vy, vx);
+    } else {
+      // Use angle based on lastDirection when idle
+      const directionAngles: { [key: string]: number } = {
+        'down': Math.PI / 2,    // 90°
+        'up': -Math.PI / 2,     // -90°
+        'right': 0,              // 0°
+        'left': Math.PI          // 180°
+      };
+      angle = directionAngles[(this.player as any).lastDirection] || 0;
+    }
+    
     const dx = Math.cos(angle) * this.offset;
     const dy = Math.sin(angle) * this.offset;
     this.square.setPosition(x + dx, y + dy);

@@ -10,7 +10,7 @@ export default class UIButton extends Phaser.GameObjects.Container {
 
     this.add([bg, text])
     this.setSize(160, 40)
-    this.setInteractive(new Phaser.Geom.Rectangle(-80, -20, 160, 40), Phaser.Geom.Rectangle.Contains)
+    this.setInteractive({ useHandCursor: true })
     this.scene.input.setDraggable(this)
     this.scene.input.setTopOnly(true)
 
