@@ -3,6 +3,7 @@ import { RoomManager } from '../game/RoomManager'
 import Player from '../player/Player'
 import Door from '../player/Interaction/Door'
 import MiniMap from '../utils/MiniMap'
+import AudioManager from '../audio/AudioManager'
 import { CONSTANTS } from '../utils/Constants'
 
 interface DoorConfig {
@@ -45,6 +46,8 @@ export default class RoomScene extends Phaser.Scene {
 
     // Center the camera on the room
     this.cameras.main.centerOn(this.roomWidth / 2, this.roomHeight / 2)
+    // Set the area outside the room to black
+    this.cameras.main.setBackgroundColor(0x000000)
 
     this.graphics = this.add.graphics()
     this.miniMap = new MiniMap(this, this.roomManager, this.currentRoomId)
@@ -91,6 +94,9 @@ export default class RoomScene extends Phaser.Scene {
     if (!roomData?.visited) {
       ;(lever as any).interactable = {
         onInteract: (_player: Player) => {
+          // Play lever SFX
+          try { AudioManager.getInstance().playSfx('sfx_Lever') } catch (e) {}
+
           // Set lever to fully open (frame 4) on first interact
           lever.setFrame(4)
           ;(lever as any).currentLeverFrame = 4
@@ -280,62 +286,84 @@ export default class RoomScene extends Phaser.Scene {
 
     // Place walls outside the room bounds so they visually sit on the room edges
     // Add extra padding so the vertical wall bars extend further up/down (expand 'black rectangle' height)
-    const extra = Math.max(0, Math.round(thickness * 8))
+      // Shorter extension so walls don't stretch too far past doors
+      const extra = Math.max(Math.round(thickness * 4), Math.round(this.roomHeight * 0.06))
     // Top/bottom should span beyond the room width; left/right should be taller than room height
     const outerWidth = this.roomWidth + thickness * 2 + extra
     const outerHeight = this.roomHeight + thickness * 2 + extra
 
-    // Use TileSprite so wall textures repeat instead of stretching
-    const top = this.add.tileSprite(this.roomWidth / 2, -thickness / 2 - Math.round(extra / 2), outerWidth, thickness, chosenWallKey)
+    // Draw simple solid black wall bands whose inner edges align with the room edges
+    // so they visually start exactly where doors' inner edges sit.
+    const wallBandExtra = extra
+
+    // Top/bottom: height includes thickness plus outward padding; bottom edge of top = 0
+    const topHeight = thickness + wallBandExtra
+    const top = this.add.rectangle(this.roomWidth / 2, -topHeight / 2, outerWidth, topHeight, 0x000000)
     top.setOrigin(0.5)
     top.setDepth(1)
 
-    const bottom = this.add.tileSprite(this.roomWidth / 2, this.roomHeight + thickness / 2 + Math.round(extra / 2), outerWidth, thickness, chosenWallKey)
+    const bottom = this.add.rectangle(this.roomWidth / 2, this.roomHeight + topHeight / 2, outerWidth, topHeight, 0x000000)
     bottom.setOrigin(0.5)
     bottom.setDepth(1)
 
-    // Left/right should be tall vertical bars (height > roomHeight) and their width should be the wall thickness
-    const left = this.add.tileSprite(-thickness / 2 - Math.round(extra / 2), this.roomHeight / 2, thickness, outerHeight, chosenWallKey)
+    // Left/right: width includes thickness plus outward padding; right edge of left = 0
+    const sideWidth = thickness + wallBandExtra
+    const left = this.add.rectangle(-sideWidth / 2, this.roomHeight / 2, sideWidth, outerHeight, 0x000000)
     left.setOrigin(0.5)
     left.setDepth(1)
 
-    const right = this.add.tileSprite(this.roomWidth + thickness / 2 + Math.round(extra / 2), this.roomHeight / 2, thickness, outerHeight, chosenWallKey)
+    const right = this.add.rectangle(this.roomWidth + sideWidth / 2, this.roomHeight / 2, sideWidth, outerHeight, 0x000000)
     right.setOrigin(0.5)
     right.setDepth(1)
 
-    // Try to compute texture source size so we can set tileScale to make
-    // the wall texture repeat and cover the full wall rectangle cleanly.
+    this.tiles.push(top, bottom, left, right)
+
+    // Add textured TileSprites on top of the black wall bands so visuals return
     try {
+      const topTS = this.add.tileSprite(this.roomWidth / 2, -topHeight / 2, outerWidth, topHeight, chosenWallKey)
+      topTS.setOrigin(0.5)
+      topTS.setDepth(1.05)
+
+      const bottomTS = this.add.tileSprite(this.roomWidth / 2, this.roomHeight + topHeight / 2, outerWidth, topHeight, chosenWallKey)
+      bottomTS.setOrigin(0.5)
+      bottomTS.setDepth(1.05)
+
+      const leftTS = this.add.tileSprite(-sideWidth / 2, this.roomHeight / 2, sideWidth, outerHeight, chosenWallKey)
+      leftTS.setOrigin(0.5)
+      leftTS.setDepth(1.05)
+
+      const rightTS = this.add.tileSprite(this.roomWidth + sideWidth / 2, this.roomHeight / 2, sideWidth, outerHeight, chosenWallKey)
+      rightTS.setOrigin(0.5)
+      rightTS.setDepth(1.05)
+
+      // Attempt to set sensible tileScale based on source texture size
       const tex = (this.textures.get(chosenWallKey) as any)
       const srcImg = typeof tex.getSourceImage === 'function' ? tex.getSourceImage() : (tex.source && tex.source[0] && (tex.source[0].image || tex.source[0]))
       const srcW = (srcImg && srcImg.width) || 32
       const srcH = (srcImg && srcImg.height) || 32
 
-      // Top/bottom: stretch horizontally across outerWidth, tile vertically to match wall thickness
       const horizRepeats = Math.max(1, Math.ceil(outerWidth / srcW))
-      ;(top as any).tileScaleX = outerWidth / (horizRepeats * srcW)
-      ;(top as any).tileScaleY = Math.max(0.01, thickness / srcH)
+      ;(topTS as any).tileScaleX = outerWidth / (horizRepeats * srcW)
+      ;(topTS as any).tileScaleY = Math.max(0.05, topHeight / srcH)
+      if (typeof (topTS as any).setTileScale === 'function') (topTS as any).setTileScale((topTS as any).tileScaleX, (topTS as any).tileScaleY)
 
-      ;(bottom as any).tileScaleX = outerWidth / (horizRepeats * srcW)
-      ;(bottom as any).tileScaleY = Math.max(0.01, thickness / srcH)
+      ;(bottomTS as any).tileScaleX = outerWidth / (horizRepeats * srcW)
+      ;(bottomTS as any).tileScaleY = Math.max(0.05, topHeight / srcH)
+      if (typeof (bottomTS as any).setTileScale === 'function') (bottomTS as any).setTileScale((bottomTS as any).tileScaleX, (bottomTS as any).tileScaleY)
 
-      // Left/right: tile vertically to fill outerHeight and set horizontal scale to match thickness
       const vertRepeats = Math.max(1, Math.ceil(outerHeight / srcH))
-      ;(left as any).tileScaleX = Math.max(0.01, thickness / srcW)
-      ;(left as any).tileScaleY = outerHeight / (vertRepeats * srcH)
+      ;(leftTS as any).tileScaleX = Math.max(0.05, sideWidth / srcW)
+      ;(leftTS as any).tileScaleY = Math.max(0.05, outerHeight / (vertRepeats * srcH))
+      if (typeof (leftTS as any).setTileScale === 'function') (leftTS as any).setTileScale((leftTS as any).tileScaleX, (leftTS as any).tileScaleY)
 
-      ;(right as any).tileScaleX = Math.max(0.01, thickness / srcW)
-      ;(right as any).tileScaleY = outerHeight / (vertRepeats * srcH)
+      ;(rightTS as any).tileScaleX = Math.max(0.05, sideWidth / srcW)
+      ;(rightTS as any).tileScaleY = Math.max(0.05, outerHeight / (vertRepeats * srcH))
+      if (typeof (rightTS as any).setTileScale === 'function') (rightTS as any).setTileScale((rightTS as any).tileScaleX, (rightTS as any).tileScaleY)
+
+      this.tiles.push(topTS, bottomTS, leftTS, rightTS)
     } catch (e) {
-      // Fallback: small tile scale to give more repeats
-      const wallTileScale = 0.25
-      ;(top as any).tileScaleY = wallTileScale
-      ;(bottom as any).tileScaleY = wallTileScale
-      ;(left as any).tileScaleX = wallTileScale
-      ;(right as any).tileScaleX = wallTileScale
+      // ignore if textures aren't available yet
     }
-
-    this.tiles.push(top, bottom, left, right)
 
     // After walls/floor are created, optionally populate furniture for special room types
     const roomType = this.chooseRoomType()
@@ -352,84 +380,6 @@ export default class RoomScene extends Phaser.Scene {
     if (seed % 4 === 0) return 'kitchen'
     return 'default'
   }
-
-  // createKitchenFurniture (tileW: number, tileH: number, thickness: number) {
-  //   // Clear any previous furniture
-  //   if (this.furniture.length) {
-  //     this.furniture.forEach(f => f.destroy())
-  //     this.furniture = []
-  //   }
-
-  //   const cx = this.roomWidth / 2
-  //   const cy = this.roomHeight / 2
-
-  //   // Table in the centre-lower area (smaller so it doesn't dominate)
-  //   const table = this.add.image(cx, cy + tileH * 0.6, 'furniture_table')
-  //   table.setDisplaySize(tileW * 1.2, tileH * 0.8)
-  //   table.setDepth(1)
-  //   this.furniture.push(table)
-
-  //   // Chairs around the table (scaled down, positioned outside table edge)
-  //   const chairLeft = this.add.image(table.x - table.displayWidth / 2 - tileW * 0.25, table.y + 6, 'furniture_chair_looking_right')
-  //   chairLeft.setDisplaySize(tileW * 0.45, tileH * 0.45)
-  //   chairLeft.setDepth(1)
-  //   this.furniture.push(chairLeft)
-
-  //   const chairRight = this.add.image(table.x + table.displayWidth / 2 + tileW * 0.25, table.y + 6, 'furniture_chair_looking_left')
-  //   // Many chair assets include orientations; fall back to rotated right-facing if left-facing key missing
-  //   if (!this.textures.exists('furniture_chair_looking_left')) {
-  //     chairRight.setTexture('furniture_chair_looking_right')
-  //     chairRight.setAngle(180)
-  //   }
-  //   chairRight.setDisplaySize(tileW * 0.45, tileH * 0.45)
-  //   chairRight.setDepth(1)
-  //   this.furniture.push(chairRight)
-
-  //   const chairTop = this.add.image(table.x, table.y - table.displayHeight / 2 - tileH * 0.18, 'furniture_chair_looking_down')
-  //   chairTop.setDisplaySize(tileW * 0.45, tileH * 0.45)
-  //   chairTop.setDepth(1)
-  //   this.furniture.push(chairTop)
-
-  //   // Fridge at top-left near the wall (scaled down)
-  //   const fridge = this.add.image(thickness + 24, thickness + 24, 'furniture_fridge')
-  //   fridge.setOrigin(0, 0)
-  //   fridge.setDisplaySize(tileW * 0.8, tileH * 1.4)
-  //   fridge.setDepth(1)
-  //   this.furniture.push(fridge)
-
-  //   // Sink near top wall (smaller)
-  //   const sink = this.add.image(this.roomWidth - thickness - tileW * 0.9, thickness + 18, 'furniture_sink')
-  //   sink.setOrigin(0, 0)
-  //   sink.setDisplaySize(tileW * 0.9, tileH * 0.5)
-  //   sink.setDepth(1)
-  //   this.furniture.push(sink)
-
-  //   // Kitchen equipment / stove on right-side counter (nudge inward)
-  //   const stove = this.add.image(this.roomWidth - thickness - tileW * 0.9, this.roomHeight / 2 - tileH * 0.2, 'furniture_kitchen_equipment')
-  //   stove.setDisplaySize(tileW * 0.9, tileH * 0.85)
-  //   stove.setDepth(1)
-  //   this.furniture.push(stove)
-
-  //   // Small plates / items on the table (on top layer)
-  //   const plateKeys = ['item_plate_1', 'item_plate_2', 'item_plate_3']
-  //   for (let i = 0; i < 2; i++) {
-  //     const k = plateKeys[i % plateKeys.length]
-  //     if (!this.textures.exists(k)) continue
-  //     const offX = (i === 0) ? -12 : 12
-  //     const plate = this.add.image(table.x + offX, table.y - table.displayHeight * 0.15, k)
-  //     plate.setDisplaySize(tileW * 0.28, tileH * 0.28)
-  //     plate.setDepth(3)
-  //     this.furniture.push(plate)
-  //   }
-
-  //   // Wall item: clock on north wall
-  //   if (this.textures.exists('item_wall_clock')) {
-  //     const clock = this.add.image(this.roomWidth / 2, thickness + 12, 'item_wall_clock')
-  //     clock.setDisplaySize(48, 48)
-  //     clock.setDepth(3)
-  //     this.furniture.push(clock)
-  //   }
-  // }
 
   chooseDoorTexture () {
     const doorKeys = [

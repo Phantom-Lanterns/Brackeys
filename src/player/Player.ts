@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import PlayerInteractComponent from './Interaction/PlayerInteractComponent';
+import AudioManager from '../audio/AudioManager';
 
 export default class Player {
   scene: Phaser.Scene;
@@ -10,6 +11,7 @@ export default class Player {
   keys!: { [key: string]: Phaser.Input.Keyboard.Key };
   private interactComponent?: PlayerInteractComponent;
   private lastDirection: 'down' | 'up' | 'left' | 'right' = 'down';
+  private wasMovingVertically: boolean = false;
 
   constructor (scene: Phaser.Scene, x: number, y: number, enableLight = true) {
     this.scene = scene;
@@ -107,6 +109,19 @@ export default class Player {
         case 'left': this.sprite.setFrame(12); break
       }
     }
+
+    // Play step SFX when starting vertical movement (up or down)
+    try {
+      const audio = AudioManager.getInstance()
+      if (vy !== 0) {
+        if (!this.wasMovingVertically) {
+          audio.playSfx('sfx_Step')
+          this.wasMovingVertically = true
+        }
+      } else {
+        this.wasMovingVertically = false
+      }
+    } catch (e) {}
 
     try { this.interactComponent?.update(); } catch (e) {}
 

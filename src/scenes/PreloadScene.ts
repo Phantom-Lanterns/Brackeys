@@ -44,13 +44,8 @@ export default class PreloadScene extends Phaser.Scene {
       percentText.destroy()
     })
 
-    // small placeholders so AudioManager has something to use
-    const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='
-    this.load.audio('bgm', silentWav)
-    this.load.audio('sfx', silentWav)
-
-    // optional small logo used on menu
-    this.load.image('logo', 'assets/logo.png')
+    // Load background music explicitly as 'bgm' (Music folder)
+    this.load.audio('bgm', 'assets/Music/Destiny.wav')
 
     // player spritesheet (16x16 frames, 16 frames total: 4 down, 4 up, 4 right, 4 left)
     this.load.spritesheet('player_walk', 'assets/character1.png', { frameWidth: 16, frameHeight: 32 })
